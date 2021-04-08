@@ -87,6 +87,35 @@ def initializeWeight(array_classifier, weight_model):
                 array_weight.append(classifier.weight_init)
     return array_weight
 
+def precisionPaso(array_predicted, target):
+    array_weight = [0, 0, 0]
+    size_weight = len(array_weight)
+    file_data = ""
+    for pos in (range(size_weight)):
+        file_data += "##### Peso "+str(pos+1)+" #####\n"
+        for i in range(100):
+            item_value = round(((i+1) * 0.01),2)
+            weight = round(1 - item_value, 2)
+            value = round(weight / (size_weight - 1), 2)
+            sum_value = 0
+            for j in (range(size_weight)):
+                if j == pos:
+                    array_weight[j] = item_value
+                else:
+                    if j == size_weight-1:
+                        value = round(weight - sum_value, 2)
+                    array_weight[j] = value
+                    sum_value += value
+            precision = modelPrecision(array_predicted, array_weight, target)
+            str_weight = ' '.join(str(e) for e in array_weight)
+            file_data += ""+ str_weight + " Precision: "+str(precision)+"\n"
+
+    writeToFile(file_data)
+
+def writeToFile(data):
+    f = open("precision.txt", "w+")
+    f.write(data)
+    f.close()
 
 def init():
 
@@ -94,9 +123,9 @@ def init():
     precision_umbral = 0.85
     weight_model = True # definimos si pasamos los pesos de los modelos
 
-    array_clasiffier = [ClassifierModel("Decision Tree", DecisionTreeClassifier(random_state=1), 0.2),
-                        ClassifierModel("Naive Bayes", GaussianNB(), 0.4),
-                        ClassifierModel("SVM", svm.SVC(), 0.4)]
+    array_clasiffier = [ClassifierModel("Decision Tree", DecisionTreeClassifier(random_state=1), 0.6),
+                        ClassifierModel("Naive Bayes", GaussianNB(), 0.2),
+                        ClassifierModel("SVM", svm.SVC(), 0.2)]
 
     dataset = getFileData()
     train, target = splitDataset(dataset)
@@ -114,7 +143,7 @@ def init():
     precision_x = modelPrecision(array_predicted, array_weight, target)
     print("Precision Model inicial:", precision_x)
     best_weight = array_weight[:]
-    for i in range(N):
+    """for i in range(N):
         optimizeWeight(array_weight)
         precision_s = modelPrecision(array_predicted, array_weight, target)
 
@@ -124,6 +153,9 @@ def init():
 
     print("Pesos:", best_weight)
     print("Precision Model:", precision_x)
-    print("Precision Model2:", modelPrecision(array_predicted, best_weight, target))
+    print("Precision Model2:", modelPrecision(array_predicted, best_weight, target))"""
+
+    #precisionPaso
+    precisionPaso(array_predicted, target)
 
 init()

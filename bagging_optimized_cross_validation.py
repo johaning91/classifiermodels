@@ -42,21 +42,6 @@ def buildBagging(dataset, classifier):
     #model_bagging.fit(train, target)
     return model_bagging
 
-def modelPrecision(array_predicted, array_weight, target):
-    umbral = 0.5
-    count_hits = 0
-    for i in range(len(array_predicted[0])):
-        value = 0
-        array_result = []
-        for j in range(len(array_weight)):
-            array_result.append(array_predicted[j][i] * array_weight[j])
-        total = sum(array_result)
-        if(total > umbral):
-            value = 1
-        if(value == target[i]):
-            count_hits += 1
-    return round(count_hits / len(target), 2)
-
 def optimizeWeight(array_x):
     p = random.randint(0, (len(array_x)-1))
     a = random.uniform(-0.1, 0.1)
@@ -87,7 +72,43 @@ def initializeWeight(array_classifier, weight_model):
                 array_weight.append(classifier.weight_init)
     return array_weight
 
-def precisionPaso(array_predicted, target):
+def modelPrecision(array_predicted, array_weight, target):
+    umbral = 0.5
+    count_hits = 0
+    for i in range(len(array_predicted[0])):
+        value = 0
+        array_result = []
+        for j in range(len(array_weight)):
+            array_result.append(array_predicted[j][i] * array_weight[j])
+        total = sum(array_result)
+        if(total > umbral):
+            value = 1
+        if(value == target[i]):
+            count_hits += 1
+    return round(count_hits / len(target), 2)
+
+def modelPrecisionProba(array_predicted, array_proba, array_weight, target):
+    count_hits = 0
+    for i in range(len(array_predicted[0])):
+        value = 0
+        array_result = []
+        sum_x1 = 0 #suma de la confianza no deserta
+        sum_x2 = 0 #suma de la confianza deserta
+        for j in range(len(array_weight)):
+            item_predited = array_predicted[j][i]
+            item_proba = array_proba[j][i]
+            if item_predited == 0: #si no deserta
+                sum_x1 += item_proba[0] * array_weight[j]
+            else: # si deserta
+                sum_x2 += item_proba[1] * array_weight[j]
+
+        if(sum_x2 > sum_x1):
+            value = 1
+        if(value == target[i]):
+            count_hits += 1
+    return round(count_hits / len(target), 2)
+
+def precisionGrid(array_predicted, target):
     array_weight = [0, 0, 0]
     size_weight = len(array_weight)
     file_data = ""
@@ -121,31 +142,38 @@ def init():
 
     N = 1000  # Numero de iteraciones
     precision_umbral = 0.85
-    weight_model = True # definimos si pasamos los pesos de los modelos
+    weight_model = False # definimos si pasamos los pesos de los modelos
 
-    array_clasiffier = [ClassifierModel("Decision Tree", DecisionTreeClassifier(random_state=1), 0.6),
-                        ClassifierModel("Naive Bayes", GaussianNB(), 0.2),
-                        ClassifierModel("SVM", svm.SVC(), 0.2)]
+    array_clasiffier = [
+                        ClassifierModel("Decision Tree", DecisionTreeClassifier(random_state=1, max_depth=20), 0.4),
+                        ClassifierModel("Naive Bayes", GaussianNB(var_smoothing=5), 0.3),
+                        ClassifierModel("SVM", svm.SVC(), 0.3)
+                        ]
 
     dataset = getFileData()
     train, target = splitDataset(dataset)
 
     array_predicted = []
+    array_proba = []
     for item in array_clasiffier:
         model = buildBagging(dataset, item.classifier)
-        array_predicted.append(cross_val_predict(model, X=train, y=target, cv=10))
+        model_predicted = cross_val_predict(model, X=train, y=target, cv=10)
+        model_proba = cross_val_predict(model, X=train, y=target, cv=10, method='predict_proba')
+        array_predicted.append(model_predicted)
+        array_proba.append(model_proba)
         model_score = cross_val_score(model, X=train, y=target, cv=10)
         print(item.name,": ", round(model_score.mean(), 2))
 
     array_weight = initializeWeight(array_clasiffier, weight_model) # obtiene los pesos iniciales
     print("Initial weights: ", array_weight)
 
-    precision_x = modelPrecision(array_predicted, array_weight, target)
+    #obtiene la precion del modelo mediante la probabilidad
+    precision_x = modelPrecisionProba(array_predicted, array_proba, array_weight, target)
     print("Precision Model inicial:", precision_x)
     best_weight = array_weight[:]
-    """for i in range(N):
+    for i in range(N):
         optimizeWeight(array_weight)
-        precision_s = modelPrecision(array_predicted, array_weight, target)
+        precision_s = modelPrecisionProba(array_predicted, array_proba, array_weight, target)
 
         if precision_s > precision_x:
             precision_x = precision_s
@@ -153,9 +181,9 @@ def init():
 
     print("Pesos:", best_weight)
     print("Precision Model:", precision_x)
-    print("Precision Model2:", modelPrecision(array_predicted, best_weight, target))"""
+    #print("Precision Model2:", modelPrecision(array_predicted, best_weight, target))
 
     #precisionPaso
-    precisionPaso(array_predicted, target)
+    #precisionGrid(array_predicted, target)
 
 init()

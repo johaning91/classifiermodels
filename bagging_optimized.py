@@ -16,7 +16,7 @@ class ClassifierModel:
         self.weight_init = weigth_init
 
 def getFileData():
-    url = "chrun.xlsx"
+    url = "estudiantes_balanceado_simulado.xlsx"
     data_sheet = pd.read_excel(url)
     dataset = data_sheet.values
     return dataset

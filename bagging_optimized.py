@@ -4,10 +4,17 @@ from sklearn.ensemble import BaggingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn import svm
 import pandas as pd
 from numpy import random
 import numpy as np
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import plot_confusion_matrix
+from sklearn.metrics import recall_score
+from sklearn.metrics import roc_auc_score, plot_roc_curve
+import matplotlib.pyplot as plt
+
 
 class ClassifierModel:
     def __init__(self, name, classifier, weigth_init = None):
@@ -42,6 +49,7 @@ def buildBagging(dataset, classifier):
 def modelPrecision(array_predicted, array_weight, target):
     umbral = 0.5
     count_hits = 0
+    y_predicted = []
     for i in range(len(array_predicted[0])):
         value = 0
         array_result = []
@@ -52,7 +60,8 @@ def modelPrecision(array_predicted, array_weight, target):
             value = 1
         if(value == target[i]):
             count_hits += 1
-    return round(count_hits / len(target), 2)
+        y_predicted.append(value)
+    return round(count_hits / len(target), 2), y_predicted
 
 def optimizeWeight(array_x):
     p = random.randint(0, (len(array_x)-1))
@@ -93,31 +102,42 @@ def init():
     weight_model = True # definimos si pasamos los pesos de los modelos
 
     array_clasiffier = [ClassifierModel("Decision Tree", DecisionTreeClassifier(), 0.4),
-                        ClassifierModel("Naive Bayes", RandomForestClassifier(), 0.3),
-                        ClassifierModel("SVM", GaussianNB(), 0.3)]
+                        ClassifierModel("Naive Bayes", GaussianNB(), 0.3),
+                        ClassifierModel("SVM", svm.SVC(), 0.3)]
 
     dataset_train, dataset_test = loadDatasets()
     test, target = splitDataset(dataset_test)
 
     array_predicted = []
+    models = []
     for item in array_clasiffier:
         model = buildBagging(dataset_train, item.classifier)
+        models.append(model)
         array_predicted.append(model.predict(test))
         print(item.name,": ", round(model.score(test, target), 2))
 
     array_weight = initializeWeight(array_clasiffier, weight_model) # obtiene los pesos iniciales
     print("Initial weights: ", array_weight)
 
-    precision_x = modelPrecision(array_predicted, array_weight, target)
+    precision_x, y_predicted = modelPrecision(array_predicted, array_weight, target)
 
     for i in range(N):
         array_s = optimizeWeight(array_weight)
-        precision_s = modelPrecision(array_predicted, array_weight, target)
+        precision_s, y_predicted = modelPrecision(array_predicted, array_weight, target)
 
         if precision_s > precision_x:
             precision_x = precision_s
             array_weight = array_s
 
     print("Precision Model:", precision_x)
+    print("###################################")
+    print(confusion_matrix(target, y_predicted))
+    print("AUC", roc_auc_score(target, y_predicted))
+    print("Recall", recall_score(target, y_predicted))
+
+    plot_confusion_matrix(models[0], test, target)
+    plot_roc_curve(models[0], test, target)
+
+    plt.show()
 
 init()

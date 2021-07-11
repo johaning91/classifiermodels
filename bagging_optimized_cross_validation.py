@@ -4,12 +4,18 @@ from sklearn.ensemble import BaggingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import cross_val_predict
 from sklearn.model_selection import cross_val_score
 from sklearn import svm
 import pandas as pd
 from numpy import random
 import numpy as np
+from sklearn.metrics import confusion_matrix
+from sklearn.metrics import plot_confusion_matrix
+from sklearn.metrics import recall_score
+from sklearn.metrics import roc_auc_score, plot_roc_curve
+import matplotlib.pyplot as plt
 
 class ClassifierModel:
     def __init__(self, name, classifier, weigth_init = None):
@@ -18,7 +24,7 @@ class ClassifierModel:
         self.weight_init = weigth_init
 
 def getFileData():
-    url = "chrun.xlsx"
+    url = "estudiantes_balanceado_simulado.xlsx"
     data_sheet = pd.read_excel(url)
     dataset = data_sheet.values
     return dataset
@@ -36,10 +42,7 @@ def splitDataset(dataset):
 
 def buildBagging(dataset, classifier):
     num_classifiers = 10
-    train, target = splitDataset(dataset)
     model_bagging = BaggingClassifier(base_estimator=classifier, n_estimators=num_classifiers)
-    #result = cross_val_predict(model_bagging, X=train, y=target)
-    #model_bagging.fit(train, target)
     return model_bagging
 
 def optimizeWeight(array_x):
@@ -75,6 +78,7 @@ def initializeWeight(array_classifier, weight_model):
 def modelPrecision(array_predicted, array_weight, target):
     umbral = 0.5
     count_hits = 0
+    y_predicted = []
     for i in range(len(array_predicted[0])):
         value = 0
         array_result = []
@@ -85,7 +89,8 @@ def modelPrecision(array_predicted, array_weight, target):
             value = 1
         if(value == target[i]):
             count_hits += 1
-    return round(count_hits / len(target), 2)
+        y_predicted.append(value)
+    return round(count_hits / len(target), 2), y_predicted
 
 def modelPrecisionProba(array_predicted, array_proba, array_weight, target):
     count_hits = 0
@@ -141,39 +146,36 @@ def writeToFile(data):
 def init():
 
     N = 1000  # Numero de iteraciones
-    precision_umbral = 0.85
     weight_model = False # definimos si pasamos los pesos de los modelos
 
-    array_clasiffier = [
-                        ClassifierModel("Decision Tree", DecisionTreeClassifier(random_state=1, max_depth=20), 0.4),
+    array_clasiffier = [ClassifierModel("Decision Tree", DecisionTreeClassifier(random_state=1, max_depth=20), 0.4),
                         ClassifierModel("Naive Bayes", GaussianNB(var_smoothing=5), 0.3),
-                        ClassifierModel("SVM", svm.SVC(), 0.3)
-                        ]
+                        ClassifierModel("SVM", KNeighborsClassifier(), 0.3)]
 
     dataset = getFileData()
     train, target = splitDataset(dataset)
 
     array_predicted = []
     array_proba = []
+    models = []
     for item in array_clasiffier:
         model = buildBagging(dataset, item.classifier)
+        models.append(model)
         model_predicted = cross_val_predict(model, X=train, y=target, cv=10)
-        model_proba = cross_val_predict(model, X=train, y=target, cv=10, method='predict_proba')
         array_predicted.append(model_predicted)
-        array_proba.append(model_proba)
         model_score = cross_val_score(model, X=train, y=target, cv=10)
         print(item.name,": ", round(model_score.mean(), 2))
 
     array_weight = initializeWeight(array_clasiffier, weight_model) # obtiene los pesos iniciales
     print("Initial weights: ", array_weight)
 
-    #obtiene la precion del modelo mediante la probabilidad
-    precision_x = modelPrecisionProba(array_predicted, array_proba, array_weight, target)
+    #obtiene la precion del modelo
+    precision_x, y_predicted = modelPrecision(array_predicted, array_weight, target)
     print("Precision Model inicial:", precision_x)
     best_weight = array_weight[:]
     for i in range(N):
         optimizeWeight(array_weight)
-        precision_s = modelPrecisionProba(array_predicted, array_proba, array_weight, target)
+        precision_s, y_predicted = modelPrecision(array_predicted, array_weight, target)
 
         if precision_s > precision_x:
             precision_x = precision_s
@@ -181,7 +183,18 @@ def init():
 
     print("Pesos:", best_weight)
     print("Precision Model:", precision_x)
-    #print("Precision Model2:", modelPrecision(array_predicted, best_weight, target))
+    print("###################################")
+    matrix = confusion_matrix(target, y_predicted)
+    precision_tp = matrix[0][0] / (matrix[0][0] + matrix[1][0])
+    print(matrix)
+    print("Precision TP:", precision_tp)
+    print("AUC", roc_auc_score(target, y_predicted))
+    print("Recall", recall_score(target, y_predicted))
+
+    #plot_confusion_matrix(model, dataset, target)
+    #plot_roc_curve(model, dataset, target)
+
+    #plt.show()
 
     #precisionPaso
     #precisionGrid(array_predicted, target)

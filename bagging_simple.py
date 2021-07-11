@@ -21,7 +21,7 @@ class ClassifierModel:
         self.weight_init = weigth_init
 
 def getFileData():
-    url = "estudiantes_balanceado_simulado.xlsx"
+    url = "estudiantes_balanceado.xlsx"
     data_sheet = pd.read_excel(url)
     dataset = data_sheet.values
     return dataset
@@ -46,8 +46,8 @@ def buildBagging(dataset, classifier):
 
 def init():
 
-    #classifier_model = ClassifierModel("Decision Tree", DecisionTreeClassifier())
-    classifier_model = ClassifierModel("Naive Bayes", GaussianNB())
+    classifier_model = ClassifierModel("Decision Tree", DecisionTreeClassifier())
+    #classifier_model = ClassifierModel("Naive Bayes", GaussianNB())
     #classifier_model = ClassifierModel("Naive Bayes", KNeighborsClassifier(n_neighbors=2))
     #classifier_model = ClassifierModel("SVM", svm.SVC(degree=2))
 

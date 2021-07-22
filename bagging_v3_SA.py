@@ -16,15 +16,14 @@ class ClassifierModel:
         self.classifier = classifier
         self.weight_init = weigth_init
 
-def getFileData():
-    url = "chrun.xlsx"
-    data_sheet = pd.read_excel(url)
+def getFileData(filename):
+    data_sheet = pd.read_excel(filename)
     dataset = data_sheet.values
     return dataset
 
 def loadDatasets():
-    dataset = getFileData()
-    train, test = train_test_split(dataset, test_size=0.30)
+    dataset = getFileData("estudiantes2020.xlsx")
+    train, test = train_test_split(dataset, test_size=0.30, random_state=1)
     return train, test
 
 def splitDataset(dataset):
@@ -92,12 +91,15 @@ def init():
     N = 1000  # Numero de iteraciones
     weight_model = True # definimos si pasamos los pesos de los modelos
 
-    array_clasiffier = [ClassifierModel("Decision Tree", DecisionTreeClassifier(), 0.3),
-                        ClassifierModel("Decision Tree 2", DecisionTreeClassifier(), 0.3),
+    array_clasiffier = [ClassifierModel("Decision Tree", RandomForestClassifier(), 0.3),
+                        ClassifierModel("Decision Tree 2", RandomForestClassifier(), 0.3),
                         ClassifierModel("Naive Bayes", GaussianNB(), 0.2),
-                        ClassifierModel("SVM", svm.SVC(), 0.2)]
+                        ]
 
-    dataset_train, dataset_test = loadDatasets()
+    #dataset_train, dataset_test = loadDatasets()
+    #test, target = splitDataset(dataset_test)
+    dataset_train = getFileData("estudiantes_balanceado.xlsx")
+    dataset_test = getFileData("estudiantes_balanceado.xlsx")
     test, target = splitDataset(dataset_test)
 
     array_predicted = []

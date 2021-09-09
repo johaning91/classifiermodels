@@ -4,6 +4,7 @@ from sklearn.ensemble import BaggingClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.neighbors import KNeighborsClassifier
 from sklearn import svm
 import pandas as pd
 from numpy import random
@@ -11,6 +12,8 @@ import numpy as np
 from enum import Enum
 from sklearn.metrics import confusion_matrix
 from sklearn.metrics import plot_confusion_matrix
+from sklearn.metrics import recall_score
+from sklearn.metrics import roc_auc_score, plot_roc_curve
 import matplotlib.pyplot as plt
 
 class abandonmentType:
@@ -65,25 +68,34 @@ def modelPrecisionByVote(array_predicted, target):
     return round(count_hits / len(target), 2), y_predicted
 
 def init():
-    array_clasiffier = [ClassifierModel("Decision Tree", DecisionTreeClassifier(), 0.55),
+    print("Modelo Bagging Híbrido MHSR")
+    array_clasiffier = [ClassifierModel("Árbol de decisión", DecisionTreeClassifier(max_depth=1), 0.55),
                         ClassifierModel("Naive Bayes", GaussianNB(), 0.20),
-                        ClassifierModel("SVM", svm.SVC(), 0.20)]
+                        ClassifierModel("Support Vector Machine", KNeighborsClassifier(), 0.20)]
 
     dataset_train, dataset_test = loadDatasets()
     test, target = splitDataset(dataset_test)
 
     array_predicted = []
+    models=[]
     for item in array_clasiffier:
         model = buildBagging(dataset_train, item.classifier)
+        models.append(model)
         array_predicted.append(model.predict(test))
-        print(item.name,": ", round(model.score(test, target), 2))
+        #print(item.name,": ", round(model.score(test, target), 2))
 
     precision, y_predicted = modelPrecisionByVote(array_predicted, target)
-    print("Precision Model:", precision)
+    #print("Precision Model:", precision)
+
+    plot_confusion_matrix(models[0], test, target)
+    plot_roc_curve(models[0], test, target)
+    #plt.show()
 
     matrix = confusion_matrix(target, y_predicted)
-    print(matrix)
-    plot_confusion_matrix(model, test, target)
-    plt.show()
+    precision_tp = matrix[0][0] / (matrix[0][0] + matrix[1][0])
+    #print(matrix)
+    print("Precision TP:", precision_tp)
+    print("AUC", roc_auc_score(target, y_predicted))
+    print("Recall", recall_score(target, y_predicted))
 
 init()
